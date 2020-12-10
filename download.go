@@ -24,6 +24,10 @@ type HistoricalData struct {
 func Download(equitySymbol string, period1 string, period2 string, interval string) {
   endpoint := os.Getenv("YAHOO_HISTORICAL_DATA_ENDPOINT")
 
+  if interval != "1d" {
+    log.Fatalf("ERROR! Sorry, the interval \"%s\" isn't yet supported", interval)
+  }
+
   u, _ := url.Parse(endpoint)
   u.Path += equitySymbol
   q := u.Query()
