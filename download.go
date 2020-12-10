@@ -5,20 +5,25 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/big"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
+
+	"gorm.io/gorm"
 )
 
 type HistoricalData struct {
-  Date string
-  Open big.Float
-  High big.Float
-  Low big.Float
-  Close big.Float
-  AdjustClose big.Float
-  Volume big.Int
+    gorm.Model
+
+    Date time.Time
+    Symbol string
+    Open float64
+    High float64
+    Low float64
+    Close float64
+    AdjustClose float64
+    Volume int64
 }
 
 func Download(equitySymbol string, period1 string, period2 string, interval string) {
@@ -40,7 +45,7 @@ func Download(equitySymbol string, period1 string, period2 string, interval stri
   q.Set("includeAdjustedClose", "true")
 
   u.RawQuery = q.Encode()
-  fmt.Println("About to call api to", u.String())
+  log.Println("--- INFO: calling api:", u.String())
 
   resp, err := http.Get(u.String())
 
@@ -51,16 +56,23 @@ func Download(equitySymbol string, period1 string, period2 string, interval stri
   r := csv.NewReader(resp.Body)
 
   if resp.StatusCode != http.StatusOK {
-    fmt.Println("Error response", resp.StatusCode)
+    log.Println("---ERROR: Error response", resp.StatusCode)
     log.Fatal(resp.StatusCode)
   } else {
-    processCSV(r, buildRecord)
+    priceHistories := processCSV(r, equitySymbol, buildRecord)
+
+    gormDbResult := Db.Create(&priceHistories)
+
+    if (gormDbResult.Error != nil) {
+      log.Fatal("--- ERROR: Persist HistoricalData failed", gormDbResult.Error)
+    }
   }
 }
 
-func buildRecord(record []string) *HistoricalData {
+func buildRecord(record []string, equitySymbol string) *HistoricalData {
   history := &HistoricalData{
-    Date:          record[0],
+    Symbol:        equitySymbol,
+    Date:          parseDate(record[0]),
     Open:          parseFloat(record[1]),
     High:          parseFloat(record[2]),
     Low:           parseFloat(record[3]),
@@ -69,14 +81,16 @@ func buildRecord(record []string) *HistoricalData {
     Volume:        parseInt(record[6]),
   }
 
-  fmt.Println(history.Date, &history.Open, &history.Close)
+  log.Println(history.Date, history.High, history.Low , history.Open, history.Close, history.AdjustClose, history.Volume)
 
   return history
 }
 
-func processCSV(csvReader *csv.Reader, fun func(r []string) *HistoricalData) {
+func processCSV(csvReader *csv.Reader, equitySymbol string, fun func(r []string, equitySymbol string) *HistoricalData) []*HistoricalData {
   // exclude header
   _, _ = csvReader.Read()
+
+  result := make([]*HistoricalData, 0)
 
   for {
     record, err := csvReader.Read()
@@ -88,7 +102,9 @@ func processCSV(csvReader *csv.Reader, fun func(r []string) *HistoricalData) {
     if err != nil {
       log.Fatal(err)
     } else {
-      fun(record)
+      result = append(result, fun(record, equitySymbol))
     }
   }
+
+  return result
 }
