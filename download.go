@@ -56,7 +56,7 @@ func Download(equitySymbol string, period1 string, period2 string, interval stri
   r := csv.NewReader(resp.Body)
 
   if resp.StatusCode != http.StatusOK {
-    log.Println("---ERROR: Error response", resp.StatusCode)
+    log.Println("--- ERROR: Error response", resp.StatusCode)
     log.Fatal(resp.StatusCode)
   } else {
     priceHistories := processCSV(r, equitySymbol, buildRecord)
