@@ -27,5 +27,5 @@ func migrateDB() {
   }
 
   Db = db;
-  db.AutoMigrate(&HistoricalData{})
+  db.AutoMigrate(&HistoricalData{}, &Ticker{})
 }

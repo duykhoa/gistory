@@ -8,23 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"time"
-
-	"gorm.io/gorm"
 )
-
-type HistoricalData struct {
-    gorm.Model
-
-    Date time.Time
-    Symbol string
-    Open float64
-    High float64
-    Low float64
-    Close float64
-    AdjustClose float64
-    Volume int64
-}
 
 func Download(equitySymbol string, period1 string, period2 string, interval string) {
   endpoint := os.Getenv("YAHOO_HISTORICAL_DATA_ENDPOINT")
@@ -45,7 +29,7 @@ func Download(equitySymbol string, period1 string, period2 string, interval stri
   q.Set("includeAdjustedClose", "true")
 
   u.RawQuery = q.Encode()
-  log.Println("--- INFO: calling api:", u.String())
+  log.Println("--- INFO: Calling api:", u.String())
 
   resp, err := http.Get(u.String())
 
@@ -66,6 +50,8 @@ func Download(equitySymbol string, period1 string, period2 string, interval stri
     if (gormDbResult.Error != nil) {
       log.Fatal("--- ERROR: Persist HistoricalData failed", gormDbResult.Error)
     }
+
+    log.Printf("--- INFO: Successfully process the history data. Symbol: \"%s\", Period1: \"%s\", Period2: \"%s\"\n", equitySymbol, period1, period2)
   }
 }
 
@@ -80,8 +66,6 @@ func buildRecord(record []string, equitySymbol string) *HistoricalData {
     AdjustClose:   parseFloat(record[5]),
     Volume:        parseInt(record[6]),
   }
-
-  log.Println(history.Date, history.High, history.Low , history.Open, history.Close, history.AdjustClose, history.Volume)
 
   return history
 }
